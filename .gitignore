@@ -1,0 +1,23 @@
+# Context
+.DS_Store
+.env
+*.log
+*.swp
+*.swo
+*.pyc
+
+# IDE / Editor
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# Compiled source
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+
+# Dependencies
+.env/
+node_modules/
