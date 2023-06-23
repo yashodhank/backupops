@@ -1,0 +1,56 @@
+version: "3"
+services:
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      # Telegram Bot Token
+      - TELEGRAM_TOKEN=<your_telegram_bot_token>
+
+      # Telegram Chat IDs (comma-separated list)
+      - TELEGRAM_CHAT_IDS=<telegram_chat_ids>
+
+      # Pushover App Token (optional)
+      - PUSHOVER_APP_TOKEN=<pushover_app_token>
+
+      # Pushover User Key (optional)
+      - PUSHOVER_USER_KEY=<pushover_user_key>
+
+      # Google Spreadsheet credentials (JSON key)
+      - GOOGLE_PROJECT_ID=<google_project_id>
+      - GOOGLE_PRIVATE_KEY_ID=<google_private_key_id>
+      - GOOGLE_PRIVATE_KEY=<google_private_key>
+      - GOOGLE_CLIENT_EMAIL=<google_client_email>
+      - GOOGLE_CLIENT_ID=<google_client_id>
+      - GOOGLE_CLIENT_X509_CERT_URL=<google_client_x509_cert_url>
+
+      # Plesk backup settings
+      - PLESK_BACKUP_DIR=/var/lib/psa/dumps/
+      - PLESK_FILE_BACKUP_PREFIX=file_backup_
+      - PLESK_DB_BACKUP_PREFIX=db_backup_
+
+      # Wasabi S3 settings
+      - WASABI_BUCKET_NAME=<wasabi_bucket_name>
+      - WASABI_ACCESS_KEY_ID=<wasabi_access_key_id>
+      - WASABI_SECRET_ACCESS_KEY=<wasabi_secret_access_key>
+
+      # AWS S3 settings
+      - AWS_REGION=us-east-1
+      - AWS_ENDPOINT_URL=https://s3.wasabisys.com
+
+      # Backup destination directory
+      - BACKUP_DESTINATION=/app/backups/
+
+      # Rotation settings
+      - ROTATE_AFTER_DAYS=90
+
+      # Failed backup count for Pushover emergency notification (optional)
+      - PUSHOVER_FAILURE_THRESHOLD=3
+
+      # Google Spreadsheet name (optional)
+      - GOOGLE_SPREADSHEET_NAME=<google_spreadsheet_name>
+
+    volumes:
+      - ./backup.py:/app/backup.py
+      - ./requirements.txt:/app/requirements.txt
