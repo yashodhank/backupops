@@ -52,5 +52,6 @@ services:
       - GOOGLE_SPREADSHEET_NAME=<google_spreadsheet_name>
 
     volumes:
+      - /var/lib/psa/dumps/:/var/lib/psa/dumps/
       - ./backup.py:/app/backup.py
       - ./requirements.txt:/app/requirements.txt

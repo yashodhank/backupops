@@ -120,8 +120,7 @@ To configure Pushover for backup alerts:
 To configure Google Spreadsheet for backup logs:
 
 1. Create a Google
-
- Service Account by following the instructions in the [Google Cloud documentation](https://cloud.google.com/docs/authentication/getting-started#creating_a_service_account).
+   Service Account by following the instructions in the [Google Cloud documentation](https://cloud.google.com/docs/authentication/getting-started#creating_a_service_account).
 2. Generate a JSON key file for the Service Account and keep it secure.
 3. Share the desired Google Spreadsheet with the Service Account email address.
 4. Obtain the required credentials from the JSON key file:

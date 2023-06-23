@@ -57,9 +57,11 @@ ROTATE_AFTER_DAYS = int(os.getenv('ROTATE_AFTER_DAYS', '90'))
 # Failed backup count for Pushover emergency notification
 PUSHOVER_FAILURE_THRESHOLD = int(os.getenv('PUSHOVER_FAILURE_THRESHOLD', '3'))
 
+
 def create_backup_directory():
     if not os.path.exists(BACKUP_DESTINATION):
         os.makedirs(BACKUP_DESTINATION)
+
 
 def create_backup():
     current_time = datetime.now().strftime("%Y%m%d%H%M%S")
@@ -67,10 +69,13 @@ def create_backup():
     # Backup files for all active Plesk users
     users = find_active_plesk_users()
     for user in users:
-        user_files_backup_file_name = PLESK_FILE_BACKUP_PREFIX + user + "_" + current_time + ".tar"
-        user_files_backup_file_path = os.path.join(BACKUP_DESTINATION, user_files_backup_file_name)
+        user_files_backup_file_name = PLESK_FILE_BACKUP_PREFIX + \
+            user + "_" + current_time + ".tar"
+        user_files_backup_file_path = os.path.join(
+            BACKUP_DESTINATION, user_files_backup_file_name)
         plesk_user_files_path = find_plesk_user_files_path(user)
-        shutil.make_archive(user_files_backup_file_path, "gztar", plesk_user_files_path)
+        shutil.make_archive(user_files_backup_file_path,
+                            "gztar", plesk_user_files_path)
 
     # Backup databases for all active Plesk users
     databases_backup_file_names = []
@@ -78,46 +83,57 @@ def create_backup():
         user_databases = find_plesk_user_databases(user)
         for database_info in user_databases:
             database_type, database_name = database_info
-            database_backup_file_name = PLESK_DB_BACKUP_PREFIX + database_type + "_" + database_name + "_" + current_time + ".sql"
-            database_backup_file_path = os.path.join(BACKUP_DESTINATION, database_backup_file_name)
-            backup_database(database_type, database_name, database_backup_file_path)
+            database_backup_file_name = PLESK_DB_BACKUP_PREFIX + \
+                database_type + "_" + database_name + "_" + current_time + ".sql"
+            database_backup_file_path = os.path.join(
+                BACKUP_DESTINATION, database_backup_file_name)
+            backup_database(database_type, database_name,
+                            database_backup_file_path)
             databases_backup_file_names.append(database_backup_file_name)
 
     return current_time, user_files_backup_file_names, databases_backup_file_names
 
+
 def find_active_plesk_users():
     users = []
     command = "plesk bin user --list"
-    output = subprocess.check_output(command, shell=True, universal_newlines=True)
+    output = subprocess.check_output(
+        command, shell=True, universal_newlines=True)
     for line in output.splitlines():
         if "client" in line:
             user = line.split("|")[3].strip()
             users.append(user)
     return users
 
+
 def find_plesk_user_files_path(user):
     command = f"plesk bin user --info {user}"
-    output = subprocess.check_output(command, shell=True, universal_newlines=True)
+    output = subprocess.check_output(
+        command, shell=True, universal_newlines=True)
     for line in output.splitlines():
         if "Home directory" in line:
             return line.split("|")[2].strip()
     return None
 
+
 def find_plesk_user_databases(user):
     databases = []
     # Find MySQL databases
     command_mysql = f"plesk db -Ne 'SELECT name FROM data_bases WHERE dom_id IN (SELECT id FROM domains WHERE name=\"{user}\") AND type=\"mysql\"'"
-    output_mysql = subprocess.check_output(command_mysql, shell=True, universal_newlines=True)
+    output_mysql = subprocess.check_output(
+        command_mysql, shell=True, universal_newlines=True)
     for line in output_mysql.splitlines():
         databases.append(("mysql", line.strip()))
 
     # Find PostgreSQL databases
     command_postgres = f"plesk db -Ne 'SELECT name FROM data_bases WHERE dom_id IN (SELECT id FROM domains WHERE name=\"{user}\") AND type=\"postgresql\"'"
-    output_postgres = subprocess.check_output(command_postgres, shell=True, universal_newlines=True)
+    output_postgres = subprocess.check_output(
+        command_postgres, shell=True, universal_newlines=True)
     for line in output_postgres.splitlines():
         databases.append(("postgresql", line.strip()))
 
     return databases
+
 
 def backup_database(database_type, database_name, backup_file_path):
     if database_type == "mysql":
@@ -126,6 +142,7 @@ def backup_database(database_type, database_name, backup_file_path):
     elif database_type == "postgresql":
         command = f"pg_dump -U postgres -Fc {database_name} > {backup_file_path}"
         os.system(command)
+
 
 def upload_to_wasabi_s3(current_time, user_files_backup_file_names, databases_backup_file_names):
     # Upload files to Wasabi S3 bucket
@@ -142,11 +159,13 @@ def upload_to_wasabi_s3(current_time, user_files_backup_file_names, databases_ba
         s3_file_path = f"{s3_folder_path}/{backup_file_name}"
         upload_to_s3(local_file_path, s3_file_path)
 
+
 def upload_to_s3(local_file_path, s3_file_path):
     command = f"aws s3 cp {local_file_path} s3://{WASABI_BUCKET_NAME}/{s3_file_path} \
                 --region {AWS_REGION} --endpoint-url {AWS_ENDPOINT_URL} \
                 --no-verify-ssl --access-key {WASABI_ACCESS_KEY_ID} --secret-key {WASABI_SECRET_ACCESS_KEY}"
     os.system(command)
+
 
 def get_s3_folder_path(current_time, backup_file_name):
     server_public_ip = get_public_ip()
@@ -154,24 +173,30 @@ def get_s3_folder_path(current_time, backup_file_name):
     folder_name = f"{server_public_ip}/{username}/{current_time}"
     return folder_name
 
+
 def upload_to_google_spreadsheet(current_time, user_files_backup_file_names, databases_backup_file_names):
     scope = ["https://spreadsheets.google.com/feeds",
              "https://www.googleapis.com/auth/drive"]
-    credentials = ServiceAccountCredentials.from_json_keyfile_dict(SPREADSHEET_CREDENTIALS, scope)
+    credentials = ServiceAccountCredentials.from_json_keyfile_dict(
+        SPREADSHEET_CREDENTIALS, scope)
     client = gspread.authorize(credentials)
 
     # Get or create the Google Spreadsheet
-    spreadsheet_name = os.getenv('GOOGLE_SPREADSHEET_NAME', f"backuposp_{get_public_ip()}")
+    spreadsheet_name = os.getenv(
+        'GOOGLE_SPREADSHEET_NAME', f"backuposp_{get_public_ip()}")
     spreadsheet = get_or_create_spreadsheet(client, spreadsheet_name)
 
     # Upload backup information to Google Spreadsheet
     for user, user_files_backup_file_name in zip(find_active_plesk_users(), user_files_backup_file_names):
         worksheet = get_or_create_worksheet(spreadsheet, user)
-        upload_backup_info_to_worksheet(worksheet, current_time, user_files_backup_file_name, "File Backup")
+        upload_backup_info_to_worksheet(
+            worksheet, current_time, user_files_backup_file_name, "File Backup")
 
     for user, database_backup_file_name in zip(find_active_plesk_users(), databases_backup_file_names):
         worksheet = get_or_create_worksheet(spreadsheet, user)
-        upload_backup_info_to_worksheet(worksheet, current_time, database_backup_file_name, "Database Backup")
+        upload_backup_info_to_worksheet(
+            worksheet, current_time, database_backup_file_name, "Database Backup")
+
 
 def get_or_create_spreadsheet(client, spreadsheet_name):
     try:
@@ -179,26 +204,32 @@ def get_or_create_spreadsheet(client, spreadsheet_name):
     except gspread.exceptions.SpreadsheetNotFound:
         return client.create(spreadsheet_name)
 
+
 def get_or_create_worksheet(spreadsheet, worksheet_name):
     try:
         return spreadsheet.worksheet(worksheet_name)
     except gspread.exceptions.WorksheetNotFound:
         return spreadsheet.add_worksheet(worksheet_name, 1, 1)
 
+
 def upload_backup_info_to_worksheet(worksheet, current_time, backup_file_name, backup_type):
     s3_file_url = get_s3_file_url(current_time, backup_file_name)
-    row_data = [current_time, backup_file_name, s3_file_url, backup_type, "", "", "", ""]
+    row_data = [current_time, backup_file_name,
+                s3_file_url, backup_type, "", "", "", ""]
     worksheet.append_row(row_data)
+
 
 def get_s3_file_url(current_time, backup_file_name):
     s3_folder_path = get_s3_folder_path(current_time, backup_file_name)
     s3_file_path = f"{s3_folder_path}/{backup_file_name}"
     return f"{AWS_ENDPOINT_URL}/{quote_plus(WASABI_BUCKET_NAME)}/{quote_plus(s3_file_path)}"
 
+
 def send_telegram_alert(message):
     for chat_id in TELEGRAM_CHAT_IDS:
         bot = telebot.TeleBot(TELEGRAM_TOKEN)
         bot.send_message(chat_id, message)
+
 
 def send_pushover_alert(message):
     if PUSHOVER_APP_TOKEN and PUSHOVER_USER_KEY:
@@ -210,13 +241,16 @@ def send_pushover_alert(message):
             "message": message,
             "priority": 1
         }
-        subprocess.run(["curl", "-s", "-X", "POST", pushover_url, "-F", f"token={PUSHOVER_APP_TOKEN}", "-F", f"user={PUSHOVER_USER_KEY}", "-F", f"title=Backup Failure", "-F", f"message={message}", "-F", "priority=1"])
+        subprocess.run(["curl", "-s", "-X", "POST", pushover_url, "-F",
+                       f"token={PUSHOVER_APP_TOKEN}", "-F", f"user={PUSHOVER_USER_KEY}", "-F", f"title=Backup Failure", "-F", f"message={message}", "-F", "priority=1"])
+
 
 def delete_temp_backups():
     backups = os.listdir(BACKUP_DESTINATION)
     for backup in backups:
         backup_path = os.path.join(BACKUP_DESTINATION, backup)
         os.remove(backup_path)
+
 
 def rotate_backups():
     rotation_date = datetime.now() - timedelta(days=ROTATE_AFTER_DAYS)
@@ -232,12 +266,15 @@ def rotate_backups():
             elif os.path.isdir(backup_path):
                 shutil.rmtree(backup_path)
 
+
 def get_public_ip():
     return os.popen('curl -s http://checkip.amazonaws.com').read().strip()
 
+
 def check_disk_space():
     command = "df -h / | tail -1"
-    output = subprocess.check_output(command, shell=True, universal_newlines=True)
+    output = subprocess.check_output(
+        command, shell=True, universal_newlines=True)
     disk_space_info = output.split()
     total_size = disk_space_info[1]
     used_size = disk_space_info[2]
@@ -245,26 +282,32 @@ def check_disk_space():
     percentage_used = disk_space_info[4]
     return total_size, used_size, available_size, percentage_used
 
+
 def get_system_stats():
     cpu_percent = psutil.cpu_percent(interval=1)
     ram_percent = psutil.virtual_memory().percent
     total_size, used_size, available_size, percentage_used = check_disk_space()
     return cpu_percent, ram_percent, total_size, used_size, available_size, percentage_used
 
+
 def main():
     try:
         create_backup_directory()
         current_time, user_files_backup_file_names, databases_backup_file_names = create_backup()
-        upload_to_wasabi_s3(current_time, user_files_backup_file_names, databases_backup_file_names)
-        upload_to_google_spreadsheet(current_time, user_files_backup_file_names, databases_backup_file_names)
+        upload_to_wasabi_s3(
+            current_time, user_files_backup_file_names, databases_backup_file_names)
+        upload_to_google_spreadsheet(
+            current_time, user_files_backup_file_names, databases_backup_file_names)
         cpu_percent, ram_percent, total_size, used_size, available_size, percentage_used = get_system_stats()
-        message = generate_telegram_message(current_time, user_files_backup_file_names, databases_backup_file_names, cpu_percent, ram_percent, total_size, used_size, available_size, percentage_used)
+        message = generate_telegram_message(current_time, user_files_backup_file_names, databases_backup_file_names,
+                                            cpu_percent, ram_percent, total_size, used_size, available_size, percentage_used)
         send_telegram_alert(message)
         delete_temp_backups()
         rotate_backups()
     except Exception as e:
         send_telegram_alert(f"Backup failed with error: {str(e)}")
         send_pushover_alert(f"Backup failed with error: {str(e)}")
+
 
 def generate_telegram_message(current_time, user_files_backup_file_names, databases_backup_file_names, cpu_percent, ram_percent, total_size, used_size, available_size, percentage_used):
     server_public_ip = get_public_ip()
@@ -300,6 +343,7 @@ def generate_telegram_message(current_time, user_files_backup_file_names, databa
     message += f"Percentage Used: {percentage_used}\n"
 
     return message
+
 
 if __name__ == "__main__":
     main()
